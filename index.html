@@ -1636,8 +1636,7 @@ function handleCSV(input){
   const reader=new FileReader();
   reader.onload=e=>{
     const text=e.target.result;
-    const lines=text.split('
-').filter(l=>l.trim());
+    const lines=text.split('\n').filter(l=>l.trim());
     if(lines.length<2){toast('CSV vide ou invalide','warn');return;}
     const headers=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/['"]/g,''));
     const rows=lines.slice(1).map(line=>{
@@ -1645,8 +1644,6 @@ function handleCSV(input){
       const obj={};headers.forEach((h,i)=>obj[h]=vals[i]||'');
       return obj;
     }).filter(r=>Object.values(r).some(v=>v));
-
-    // Auto-map columns
     const findCol=(keys)=>headers.find(h=>keys.some(k=>h.includes(k)))||null;
     const dateCol=findCol(['date','time','open']);
     const pairCol=findCol(['pair','symbol','instrument','asset']);
@@ -1654,7 +1651,6 @@ function handleCSV(input){
     const pnlCol=findCol(['pnl','profit','gain','net','return']);
     const notesCol=findCol(['notes','comment','remark','description']);
     const tagsCol=findCol(['tags','setup','strategy']);
-
     csvParsed=rows.map(r=>{
       let result='be';
       const pnlRaw=parseFloat(r[pnlCol])||0;
@@ -1669,22 +1665,18 @@ function handleCSV(input){
       if(date&&date.includes('/')){const p=date.split('/');date=p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');}
       else if(date&&date.length>10)date=date.split('T')[0].split(' ')[0];
       return{pair:r[pairCol]||'Unknown',result,rr:pnlRaw,date:date.substring(0,10),notes:r[notesCol]||'',tags:r[tagsCol]?[r[tagsCol]]:[],session:'London',newsEvent:''};
-    }).filter(r=>r.date&&r.date.match(/^\d{4}-\d{2}-\d{2}$/));
-
-    // Show preview
+    }).filter(r=>r.date);
     const preview=document.getElementById('csv-preview');
     const mapping=document.getElementById('csv-mapping');
     const count=document.getElementById('csv-count');
     if(preview)preview.style.display='block';
     if(count)count.textContent=csvParsed.length;
     if(mapping){
-      mapping.innerHTML=`<div style="background:var(--surf3);border-radius:8px;padding:12px;font-size:11px;font-family:JetBrains Mono,monospace">
-        <div style="color:var(--blue);margin-bottom:8px;font-family:Syne,sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase">Colonnes détectées</div>
-        ${[['Date',dateCol],['Paire',pairCol],['Résultat',resultCol],['P&L',pnlCol],['Notes',notesCol]].map(([lbl,col])=>`<div style="display:flex;gap:8px;margin-bottom:4px"><span style="color:var(--muted);width:80px">${lbl}:</span><span style="color:${col?'var(--win)':'var(--loss)}'}">${col||'Non trouvé'}</span></div>`).join('')}
-        <div style="margin-top:10px;color:var(--muted);font-size:10px">Aperçu: ${csvParsed.slice(0,3).map(r=>r.date+' '+r.pair+' '+r.result+(r.rr?' '+f$(r.rr):'')).join(' | ')}</div>
-      </div>`;
+      const cols=[['Date',dateCol],['Paire',pairCol],['Resultat',resultCol],['P&L',pnlCol],['Notes',notesCol]];
+      const rows2=cols.map(function(c){return '<div style="display:flex;gap:8px;margin-bottom:4px"><span style="color:var(--muted);width:80px">'+c[0]+':</span><span style="color:'+(c[1]?'var(--win)':'var(--loss)')+'">'+( c[1]||'Non trouve')+'</span></div>';}).join('');
+      mapping.innerHTML='<div style="background:var(--surf3);border-radius:8px;padding:12px;font-size:11px">'+rows2+'<div style="margin-top:8px;color:var(--muted);font-size:10px">'+csvParsed.length+' trades detectes</div></div>';
     }
-    toast('✓ '+csvParsed.length+' trades détectés — vérifie le mappage');
+    toast('CSV charge — '+csvParsed.length+' trades');
   };
   reader.readAsText(file);
 }
